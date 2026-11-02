@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="zh-CN">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>登录｜全员IP中央厨房</title><link rel="stylesheet" href="static/app.css"></head>
+<body class="login-page">
+<section class="login-panel"><div class="login-copy"><div class="brand"><span class="brand-mark">B</span><span>老板对接<small>全员 IP 中央厨房</small></span></div><div class="eyebrow" style="margin-top:88px">BOSSLINK CONTENT CENTER</div><h1>让营销物料<br>沉淀为全员能力</h1><p style="color:var(--muted);font-size:16px;line-height:1.8">集中浏览 AI 营销视频、案例展示、剪辑素材与参考脚本。登录后自动同步中央厨房内容。</p><div class="login-features"><div class="login-feature">视频、图片与文案<br><strong>统一浏览</strong></div><div class="login-feature">按营销场景分类<br><strong>快速调用</strong></div><div class="login-feature">视频一键播放<br><strong>便于预览</strong></div></div></div></section>
+<section class="login-box-wrap"><form class="login-box" id="login-form"><h2>手机号登录</h2><p>验证码仅用于本次登录，不会保存到本地文件。</p><div class="field"><label for="mobile">手机号</label><input id="mobile" inputmode="numeric" maxlength="11" placeholder="请输入 11 位手机号" required></div><div class="field" id="captcha-field" hidden><label for="captcha">图形验证码</label><div class="captcha-row"><input id="captcha" maxlength="8" placeholder="输入图中字符"><img id="captcha-image" alt="点击刷新图形验证码" title="点击刷新"></div></div><div class="field"><label for="verifyCode">短信验证码</label><div class="code-row"><input id="verifyCode" inputmode="numeric" maxlength="6" placeholder="请输入验证码" required><button class="button secondary" type="button" id="send-code">获取验证码</button></div></div><div id="login-message" class="login-message">输入手机号后获取验证码</div><button class="button full" type="submit">登录并进入中央厨房</button></form></section>
+<script>
+const message = document.querySelector('#login-message');
+const captchaField = document.querySelector('#captcha-field');
+const captchaImage = document.querySelector('#captcha-image');
+const mobile = document.querySelector('#mobile');
+const captcha = document.querySelector('#captcha');
+function tell(text, type='') { message.textContent=text; message.className='login-message '+type; }
+const API_BASE = 'http://127.0.0.1:8796';
+async function api(url, options={}) {
+  try {
+    const r = await fetch(API_BASE + url, {headers:{'Content-Type':'application/json'}, ...options});
+    const j = await r.json();
+    if (!r.ok || !j.ok) throw new Error(j.message || '请求失败');
+    return j;
+  } catch (error) {
+    if (error instanceof TypeError) throw new Error('本地登录服务连接失败。请从 http://127.0.0.1:8796/index.html 打开页面后重试。');
+    throw error;
+  }
+}
+async function loadCaptcha() { const data=await api('/api/captcha',{method:'POST',body:'{}'}); captchaImage.src=data.image.startsWith('data:')?data.image:'data:image/png;base64,'+data.image; captchaField.hidden=false; captcha.focus(); }
+async function sendCode() { if(!/^1\d{10}$/.test(mobile.value)) { tell('请输入正确的 11 位手机号','error'); return; } const button=document.querySelector('#send-code'); button.disabled=true; try { await api('/api/send-code',{method:'POST',body:JSON.stringify({mobile:mobile.value,captcha:captcha.value})}); tell('验证码已发送，请查收短信','success'); } catch(error) { if(/验证码/.test(error.message)) { await loadCaptcha(); tell('请完成图形验证码后重新获取短信验证码','error'); } else tell(error.message,'error'); } finally { button.disabled=false; } }
+document.querySelector('#send-code').addEventListener('click',sendCode); captchaImage.addEventListener('click',loadCaptcha);
+document.querySelector('#login-form').addEventListener('submit',async(event)=>{ event.preventDefault(); const button=event.submitter; button.disabled=true; try { await api('/api/login',{method:'POST',body:JSON.stringify({mobile:mobile.value,verifyCode:document.querySelector('#verifyCode').value})}); location.href='ai-marketing-videos.html'; } catch(error) { tell(error.message,'error'); } finally { button.disabled=false; } });
+</script></body></html>
